@@ -312,6 +312,14 @@ config LEDS_SUN50I_A100
 	  in some Allwinner sunxi SoCs, including A100, R329, and D1.
 	  It uses a one-wire interface to control up to 1024 LEDs.
 
+config LEDS_SIEMENS_IPC127
+	tristate "LED support for Siemens IPC127"
+	depends on LEDS_CLASS
+	depends on X86 && DMI
+	select LEDS_TRIGGERS
+	help
+	  This option enables support for Siemens IPC127 MMIO GPIO-driven LEDS.
+
 config LEDS_SUNFIRE
 	tristate "LED support for SunFire servers."
 	depends on LEDS_CLASS
