@@ -22,7 +22,6 @@
 #define EM320_PCA4554_I2C_ADDR 0x22
 static struct pca953x_platform_data em320_led_gpio_data = {
 	.gpio_base = 0,
-	.invert = 0,
 	.irq_base = -1,
 };
 
@@ -130,6 +129,15 @@ static const struct dmi_system_id os_dmi_table[] __initconst = {
 		.matches = {
 			DMI_MATCH(DMI_SYS_VENDOR, "Axiomtek Co., Ltd"),
 			DMI_MATCH(DMI_PRODUCT_NAME, "EM320"),
+		},
+		.driver_data = &em320_config,
+		.callback = dmi_check_cb
+	},
+	{
+		.ident = "EM321",
+		.matches = {
+			DMI_MATCH(DMI_SYS_VENDOR, "Axiomtek Co., Ltd"),
+			DMI_MATCH(DMI_PRODUCT_NAME, "EM321"),
 		},
 		.driver_data = &em320_config,
 		.callback = dmi_check_cb
