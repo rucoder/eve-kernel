@@ -1,9 +1,9 @@
 # Title: Dockerfile for building the EVE kernel
 VERSION=$(shell git rev-parse --short HEAD)
 DIRTY=$(shell git diff --quiet || echo '-dirty')
-EVE_FLAVOR=generic
-ARCHITECTURE=amd64
-KERNEL_TAG=v5.10.186
+EVE_FLAVOR=nvidia
+ARCHITECTURE=arm64
+KERNEL_TAG=v5.10.104
 PLATFORM=linux/$(ARCHITECTURE)
 SOURCE_DATE_EPOCH=$(shell git log -1 --format=%ct)
 BRANCH=eve-kernel-$(ARCHITECTURE)-$(KERNEL_TAG)-$(EVE_FLAVOR)
