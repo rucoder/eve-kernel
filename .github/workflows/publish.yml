@@ -20,7 +20,7 @@ jobs:
       - name: Get eve-kernel
         uses: actions/checkout@v3
         with:
-          ref: "eve-kernel-arm64-v5.10.104-nvidia"
+          ref: ${{ github.head_ref }}
 
       - name: Build eve-kernel-arm64
         run: |
@@ -35,4 +35,4 @@ jobs:
       - name: Push eve-kernel-arm64-v5.10.104-nvidia if PR approved or pushed
         if: github.ref == 'refs/heads/eve-kernel-arm64-v5.10.104-nvidia'
         run: |
-            make -f Makefile.eve BRANCH?=${GITHUB_REF##*/} push-gcc
+          make -f Makefile.eve BRANCH?=${GITHUB_REF##*/} push-gcc
