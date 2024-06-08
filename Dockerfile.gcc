@@ -135,9 +135,16 @@ RUN make O=/kernel-out LOCALVERSION="-${LOCALVERSION}" M=/tmp/hailo/linux/pcie -
     make O=/kernel-out LOCALVERSION="-${LOCALVERSION}" M=/tmp/hailo/linux/pcie -C /kernel-src INSTALL_MOD_STRIP=1 \
     INSTALL_MOD_PATH=/tmp/kernel-modules modules_install
 
+# we do not use Makefile and directly build out-of-tree module
+# PR https://github.com/enlyze/xr-usb-serial/pull/5 to make driver compatible
+# with kernel < 6.6 was merged
+ADD --keep-git-dir=true https://github.com/enlyze/xr-usb-serial.git /tmp/uart
+WORKDIR /tmp/uart
+RUN make O=/kernel-out LOCALVERSION="-${LOCALVERSION}" M=/tmp/uart -C /kernel-src -j$(nproc) && \
+    make O=/kernel-out LOCALVERSION="-${LOCALVERSION}" M=/tmp/uart -C /kernel-src INSTALL_MOD_STRIP=1 \
+    INSTALL_MOD_PATH=/tmp/kernel-modules modules_install
 
 FROM builder as artifacts
-
 WORKDIR /kernel-out
 
 # package artifacts
