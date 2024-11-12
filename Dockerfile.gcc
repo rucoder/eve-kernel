@@ -161,21 +161,24 @@ RUN --mount=type=cache,target=/root/.cache/ccache,id=zfs-ccache-${TARGETARCH} \
     ccache -s | tee -a /ccache-stats.txt
 
 # rtw88 wireless driver
-#ENV RTW88_REVISION="22/4/24"
-#ADD https://github.com/lwfinger/rtw88.git#${RTW88_REVISION} /tmp/rtw88
-#WORKDIR /tmp/rtw88
+ENV RTW88_REVISION="22/4/24"
+ADD https://github.com/lwfinger/rtw88.git#${RTW88_REVISION} /tmp/rtw88
+WORKDIR /tmp/rtw88
 
-#RUN --mount=type=cache,target=/root/.cache/ccache,id=rtw88-ccache-${TARGETARCH} \
-#    KVER=$(cat /kernel-out/include/config/kernel.release) && \
-#    make -j $(nproc) \
-#        CROSS_COMPILE="${CROSS_COMPILE}" ARCH="${ARCH}" KVER="$KVER" \
-#        KSRC=/kernel-out && \
-#    make -j $(nproc) \
-#        CROSS_COMPILE="${CROSS_COMPILE}" ARCH="${ARCH}" KVER="$KVER" \
-#        KSRC=/kernel-out \
-#        INSTALL_MOD_PATH=/tmp/kernel-modules \
-#        MODDESTDIR=/tmp/kernel-modules/lib/modules/${KVER}/kernel/drivers/net/wireless/rtw88 \
-#        install
+RUN --mount=type=cache,target=/root/.cache/ccache,id=rtw88-ccache-${TARGETARCH} \
+    KVER=$(cat /kernel-src/kernel/kernel-jammy-src/include/config/kernel.release) && \
+    make -j $(nproc) \
+        CROSS_COMPILE="${CROSS_COMPILE}" ARCH="${ARCH}" KVER="$KVER" \
+        KSRC=/kernel-src/kernel/kernel-jammy-src && \
+    find . -name "*.ko" -exec /kernel-src/kernel/kernel-jammy-src/scripts/sign-file \
+        sha512 /kernel-src/kernel/kernel-jammy-src/certs/signing_key.pem \
+               /kernel-src/kernel/kernel-jammy-src/certs/signing_key.x509 {} \; && \
+    make -j $(nproc) \
+        CROSS_COMPILE="${CROSS_COMPILE}" ARCH="${ARCH}" KVER="$KVER" \
+        KSRC=/kernel-src/kernel/kernel-jammy-src \
+        INSTALL_MOD_PATH=/tmp/kernel-modules \
+        MODDESTDIR=/tmp/kernel-modules/lib/modules/${KVER}/kernel/drivers/net/wireless/rtw88 \
+        install
 
 FROM builder as artifacts
 
