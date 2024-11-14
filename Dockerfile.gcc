@@ -121,7 +121,8 @@ RUN --mount=type=cache,target=/root/.cache/ccache,id=nvmodules-ccache-${TARGETAR
     && make \
         CROSS_COMPILE="${CROSS_COMPILE}" \
         KERNEL_HEADERS="/kernel-src/kernel/kernel-jammy-src" modules \
-    && find out/ -name "*.ko" -exec "${CROSS_COMPILE}strip" {} \; \
+    && CROSS_COMPILE_STRIP=$("${CROSS_COMPILE}strip" | awk '{print $NF}') \
+        find out/ -name "*.ko" -exec "${CROSS_COMPILE_STRIP}" {} \; \
     && make \
         CROSS_COMPILE="${CROSS_COMPILE}" \
         KERNEL_HEADERS="/kernel-src/kernel/kernel-jammy-src" \
