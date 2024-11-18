@@ -3030,13 +3030,13 @@ static int ether_close(struct net_device *ndev)
 		reset_control_assert(pdata->xpcs_rst);
 	}
 
+	/* All MDIO interfaces must be disabled before resetting the MAC */
+	if (pdata->mii)
+		mdiobus_unregister(pdata->mii);
+
 	/* Assert MAC RST gpio */
 	if (pdata->mac_rst) {
 		reset_control_assert(pdata->mac_rst);
-	}
-
-	if (pdata->mii != NULL) {
-		mdiobus_unregister(pdata->mii);
 	}
 
 	/* Disable clock */
@@ -3309,10 +3309,10 @@ static int ether_tx_swcx_alloc(struct ether_priv_data *pdata,
 			}
 
 			size = min(len, max_data_len_per_txd);
-			page_idx = (frag->bv_offset + offset) >> PAGE_SHIFT;
-			page_offset = (frag->bv_offset + offset) & ~PAGE_MASK;
+			page_idx = (skb_frag_off(frag) + offset) >> PAGE_SHIFT;
+			page_offset = (skb_frag_off(frag) + offset) & ~PAGE_MASK;
 			tx_swcx->buf_phy_addr = dma_map_page(dev,
-						(frag->bv_page + page_idx),
+						(skb_frag_page(frag) + page_idx),
 						page_offset, size,
 						DMA_TO_DEVICE);
 			if (unlikely(dma_mapping_error(dev,
@@ -6666,7 +6666,7 @@ static int ether_probe(struct platform_device *pdev)
 		goto err_macsec;
 	} else if (ret == 1) {
 		/* Nothing to do, macsec is not supported */
-		dev_info(&pdev->dev, "Macsec not supported/Not enabled in DT\n");
+		dev_info(&pdev->dev, "Macsec not supported/Not enabled\n");
 	} else {
 		dev_info(&pdev->dev, "Macsec not enabled\n");
 		/* Macsec is supported, reduce MTU */
