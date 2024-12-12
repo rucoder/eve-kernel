@@ -1,7 +1,7 @@
 # Title: Dockerfile for building the EVE kernel
 VERSION=$(shell git rev-parse --short=12 HEAD)
 DIRTY=$(shell git diff --quiet || echo '-dirty')
-EVE_FLAVOR=nvidia
+EVE_FLAVOR=nvidia-jp6
 ARCHITECTURE=arm64
 KERNEL_TAG=v5.15.136
 PLATFORM=linux/$(ARCHITECTURE)
