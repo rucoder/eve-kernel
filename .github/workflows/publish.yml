@@ -6,9 +6,9 @@ on:
     types: [ submitted ]
   push:
     branches:
-      - "eve-kernel-arm64-v5.10.192-nvidia"
+      - "eve-kernel-arm64-v5.10.192-nvidia-jp5"
 env:
-  branch_name: "refs/heads/eve-kernel-arm64-v5.10.192-nvidia"
+  branch_name: "refs/heads/eve-kernel-arm64-v5.10.192-nvidia-jp5"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -35,7 +35,7 @@ jobs:
           username: ${{ secrets.RELEASE_DOCKERHUB_ACCOUNT }}
           password: ${{ secrets.RELEASE_DOCKERHUB_TOKEN }}
 
-      - name: Push eve-kernel-arm64-v5.10.192-nvidia if PR approved or pushed
+      - name: Push eve-kernel-arm64-v5.10.192-nvidia-jp5 if PR approved or pushed
         if: ${{ github.ref == env.branch_name }}
         run: |
           make -f Makefile.eve BRANCH?=${GITHUB_REF##*/} push-gcc
