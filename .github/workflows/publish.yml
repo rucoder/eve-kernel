@@ -6,9 +6,9 @@ on:
     types: [ submitted ]
   push:
     branches:
-      - "eve-kernel-arm64-v6.1.112-generic"
+      - "eve-kernel-arm64-v6.1.155-generic"
 env:
-  branch_name: "refs/heads/eve-kernel-arm64-v6.1.112-generic"
+  branch_name: "refs/heads/eve-kernel-arm64-v6.1.155-generic"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
