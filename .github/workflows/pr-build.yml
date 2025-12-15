@@ -5,6 +5,8 @@ on: # yamllint disable-line rule:truthy
         branches:
             - "gha-test-rebase"
             - "eve-kernel-*"
+            - "!eve-kernel-arm64-v5.15.136-nvidia-jp6"
+            - "!eve-kernel-arm64-v5.10.192-nvidia-jp5"
         paths-ignore:
             - ".github/**"
 
