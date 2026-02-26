@@ -55,6 +55,9 @@ help: Makefile
 	@echo "  docker-tag-clang: print docker tag for clang kernel"
 	@echo "  push-gcc: push gcc kernel to docker.io"
 	@echo "  push-clang: push clang kernel to docker.io"
+	@echo "  rt-config: download RT patch, verify/apply it, and merge RT fragment to create .config"
+	@echo "  gen-rt-fragment: regenerate RT fragment from current .config"
+	@echo "  rt-clean: revert RT patch if applied and remove cached patch file"
 	@echo "  clean: remove generated files"
 	@echo
 
@@ -78,36 +81,86 @@ IMAGE_TAG_NO_FLAVOR := $(IMAGE_REPOSITORY):$(BRANCH)-$(VERSION)$(DIRTY)
 
 RT_BASE_DEFCONFIG := eve-core_defconfig
 RT_FRAGMENT       := arch/x86/configs/rt.fragment
-RT_STAMP          := .rt-merged.stamp
+RT_PATCH_URL      := https://cdn.kernel.org/pub/linux/kernel/projects/rt/6.17/older/patch-6.17.1-rt5.patch.gz
+RT_PATCH_LOCAL    := .rt-patch.patch
 
-.PHONY: rt-config gen-rt-fragment
+.PHONY: rt-config gen-rt-fragment rt-clean
 
-# 1) Merge RT fragment onto base -> write ./.config
-#    We build a STAMP, not ".config" as a target, to avoid a cycle.
-rt-config: $(RT_STAMP)
-$(RT_STAMP): $(RT_FRAGMENT) arch/x86/configs/$(RT_BASE_DEFCONFIG)
-	@echo "Merging $(RT_FRAGMENT) onto $(RT_BASE_DEFCONFIG) -> write ./.config"
-	@mv -f .config .config.bak 2>/dev/null || true
-	KCONFIG_CONFIG=.config $(MAKE) -s $(RT_BASE_DEFCONFIG)
-	@test -s $(RT_FRAGMENT) || { echo "ERROR: missing or empty $(RT_FRAGMENT)"; exit 1; }
-	# merge only (-m); don't let merge_config.sh run 'make' internally
-	KCONFIG_CONFIG=.config scripts/kconfig/merge_config.sh -m -Q .config $(RT_FRAGMENT)
+# Download RT patch to a local cache file (only once)
+$(RT_PATCH_LOCAL):
+	@echo "Downloading RT patch from $(RT_PATCH_URL)"
+	@curl -fsSL $(RT_PATCH_URL) | gunzip > $@
+	@echo "Saved RT patch to $@"
+
+# 1) Download RT patch (if needed), verify/apply it to the source tree,
+#    then merge RT fragment onto the current .config (or base defconfig if
+#    no .config exists yet).
+#
+#    rt-config is PHONY so it always runs; the patch step uses a reverse
+#    dry-run to check whether the source tree is already patched instead
+#    of relying on a stamp file that can go stale after git operations.
+#
+#    Prerequisites are only $(RT_PATCH_LOCAL) so that the fragment file
+#    rule is never triggered as a side effect.
+rt-config: $(RT_PATCH_LOCAL)
+	@# Step 1: generate .config from base defconfig only if it doesn't exist
+	@if [ ! -f .config ]; then \
+		echo "==> No .config found – generating from $(RT_BASE_DEFCONFIG)"; \
+		KCONFIG_CONFIG=.config $(MAKE) -s $(RT_BASE_DEFCONFIG); \
+	else \
+		echo "==> Using existing .config"; \
+	fi
+	@# Step 2: download (already done via prerequisite) and apply RT patch
+	@echo "==> Checking RT patch status..."
+	@if patch -p1 --dry-run -R -N -s < $(RT_PATCH_LOCAL) > /dev/null 2>&1; then \
+		echo "    RT patch is already applied"; \
+	elif patch -p1 --dry-run -N -s < $(RT_PATCH_LOCAL) > /dev/null 2>&1; then \
+		echo "    Applying RT patch..."; \
+		patch -p1 -N < $(RT_PATCH_LOCAL); \
+		echo "    RT patch applied successfully"; \
+	else \
+		echo "ERROR: RT patch cannot be applied cleanly (conflicts or partial application)"; \
+		echo "       Try: make -f Makefile.eve rt-clean   then retry"; \
+		exit 1; \
+	fi
+	@# Step 3: resolve any new Kconfig symbols introduced by the RT patch
+	@echo "==> Running olddefconfig (post-patch)..."
 	$(MAKE) -s olddefconfig
+	@# Step 4: merge rt.fragment into .config
+	@test -s $(RT_FRAGMENT) || { echo "ERROR: missing or empty $(RT_FRAGMENT)"; exit 1; }
+	@echo "==> Merging $(RT_FRAGMENT) into .config"
+	KCONFIG_CONFIG=.config scripts/kconfig/merge_config.sh -m -Q .config $(RT_FRAGMENT)
+	@# Step 5: resolve dependencies introduced by the fragment
+	$(MAKE) -s olddefconfig
+	@# Step 6: verify CONFIG_PREEMPT_RT is enabled
 	@grep -q '^CONFIG_PREEMPT_RT=y$$' .config || { echo "ERROR: CONFIG_PREEMPT_RT not enabled after merge"; exit 1; }
-	@touch $(RT_STAMP)
-	@echo "OK: wrote merged RT config to ./.config (backup: .config.bak)"
+	@echo "OK: wrote merged RT config to ./.config"
+
+# Revert RT patch and clean RT configuration
+rt-clean: $(RT_PATCH_LOCAL)
+	@echo "Checking if RT patch is applied..."
+	@if patch -p1 --dry-run -R -N -s < $(RT_PATCH_LOCAL) > /dev/null 2>&1; then \
+		echo "Reverting RT patch..."; \
+		patch -p1 -R -N < $(RT_PATCH_LOCAL); \
+		echo "RT patch reverted successfully"; \
+	else \
+		echo "RT patch is not applied (nothing to revert)"; \
+	fi
+	@rm -f $(RT_PATCH_LOCAL)
+	@echo "RT configuration cleaned"
 
 # 2) After you've edited ./.config (e.g. via 'make menuconfig'),
 #    regenerate the minimal fragment as delta vs the base defconfig.
-gen-rt-fragment: $(RT_FRAGMENT)
-$(RT_FRAGMENT): .config arch/x86/configs/$(RT_BASE_DEFCONFIG)
+#    This is a PHONY target only – it must never run as a side effect.
+gen-rt-fragment:
+	@test -f .config || { echo "ERROR: .config does not exist; run 'make menuconfig' or 'make -f Makefile.eve rt-config' first"; exit 1; }
 	@echo "Generating $(RT_FRAGMENT) as delta of current ./.config vs $(RT_BASE_DEFCONFIG)"
 	@tmpdir=$$(mktemp -d); \
 	  KCONFIG_CONFIG=$$tmpdir/base.config $(MAKE) -s $(RT_BASE_DEFCONFIG); \
 	  KCONFIG_CONFIG=$$tmpdir/base.config $(MAKE) -s olddefconfig; \
 	  scripts/diffconfig -m $$tmpdir/base.config .config > $(RT_FRAGMENT).tmp; \
 	  mv $(RT_FRAGMENT).tmp $(RT_FRAGMENT); \
-	  wc -l < $(RT_FRAGMENT) | xargs printf "Wrote %s lines to %s\n" - "$(RT_FRAGMENT)"; \
+	  echo "Wrote $$(wc -l < $(RT_FRAGMENT)) lines to $(RT_FRAGMENT)"; \
 	  rm -rf "$$tmpdir"
 
 
