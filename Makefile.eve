@@ -1,4 +1,4 @@
-# Title: Dockerfile for building the EVE kernel
+# Makefile for building the EVE kernel
 
 KERNEL_CONFIG_FLAVOR?=core
 
