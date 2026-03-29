@@ -56,6 +56,10 @@ jobs:
             - name: Clean
               if: always()
               run: |
-                make -f Makefile.eve clean
-                docker system prune -af
-                docker volume prune -af
+                  make -f Makefile.eve \
+                    KERNEL_CONFIG_FLAVOR=${{ matrix.flavor }} \
+                    BRANCH=${{ github.ref_name }} \
+                    clean-gcc
+                  echo "=== BuildKit disk usage before prune ==="
+                  docker exec linuxkit-builder buildctl du | tail -n 2
+                  docker exec linuxkit-builder buildctl prune --keep-storage "${BUILDKIT_KEEP_STORAGE_MB:-20000}"
