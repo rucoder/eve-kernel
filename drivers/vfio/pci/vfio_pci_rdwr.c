@@ -206,12 +206,29 @@ ssize_t vfio_pci_core_do_io_rw(struct vfio_pci_core_device *vdev, bool test_mem,
 }
 EXPORT_SYMBOL_GPL(vfio_pci_core_do_io_rw);
 
+/*
+ * EVE-local: see setup_bars_at_enable module parameter in
+ * vfio_pci_core.c.  When the eager-setup path is enabled (default),
+ * vfio_pci_core_enable() has already prepared barmap[bar]; this
+ * function just reports the prepared state.  When the knob is
+ * cleared, fall back to the legacy on-demand allocation so the
+ * pre-fix code path can be A/B compared.
+ */
+extern bool setup_bars_at_enable;
+
 int vfio_pci_core_setup_barmap(struct vfio_pci_core_device *vdev, int bar)
 {
 	struct pci_dev *pdev = vdev->pdev;
 	int ret;
 	void __iomem *io;
 
+	if (setup_bars_at_enable) {
+		if (IS_ERR(vdev->barmap[bar]))
+			return PTR_ERR(vdev->barmap[bar]);
+		return 0;
+	}
+
+	/* Legacy on-demand path (pre-05f2a68b407a). */
 	if (vdev->barmap[bar])
 		return 0;
 
@@ -226,7 +243,6 @@ int vfio_pci_core_setup_barmap(struct vfio_pci_core_device *vdev, int bar)
 	}
 
 	vdev->barmap[bar] = io;
-
 	return 0;
 }
 EXPORT_SYMBOL_GPL(vfio_pci_core_setup_barmap);
