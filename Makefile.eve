@@ -23,7 +23,10 @@ BASE_DEFCONFIG_rt   := eve-core_defconfig
 BASE_DEFCONFIG_hwe  := eve-hwe_defconfig
 BASE_DEFCONFIG_ai   := eve-hwe_defconfig
 
-FRAGMENTS_core := arch/x86/configs/common.fragment
+# gpu.fragment is after common.fragment and overrides its GPU-driver lines;
+# core is the flavour EVE amd64/generic ships, and the graphical console
+# lives there. hwe and ai are left alone.
+FRAGMENTS_core := arch/x86/configs/common.fragment arch/x86/configs/gpu.fragment
 FRAGMENTS_rt   := arch/x86/configs/common.fragment arch/x86/configs/rt.fragment
 # erofs.fragment is last and separable: EROFS is still experimental, so
 # building without it means deleting that one entry - no defconfig edit.

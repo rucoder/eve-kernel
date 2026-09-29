@@ -52,6 +52,9 @@ CONFIG_FRAMEBUFFER_CONSOLE=y
 # CONFIG_DRM_XE is not set
 # CONFIG_DRM_NOUVEAU is not set
 # CONFIG_DRM_RADEON is not set
+#
+# core re-enables the two Intel drivers on top of this, in gpu.fragment:
+# the graphical console needs a real KMS driver, and SR-IOV needs xe.
 
 # Signing keys. Ubuntu points these at its own certs; EVE clears them so the
 # kernel trusts only the ephemeral key kbuild generates. Was commit

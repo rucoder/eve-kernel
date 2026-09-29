@@ -1,0 +1,45 @@
+# GPU DRM drivers for the graphical console (EVE pkg/monitor).
+#
+# common.fragment turns the DRM core on for every flavour but leaves every
+# real GPU driver off, so core gets simpledrm on the EFI framebuffer and
+# nothing else. pkg/monitor draws through DRM/KMS and needs a driver that
+# owns the display engine; simpledrm gives it a fixed-mode scanout with no
+# modesetting, no page flip and no dmabuf import, which is not enough.
+#
+# Applied after common.fragment, so these five symbols override the "is not
+# set" lines there. check-config.py reports the overlap as an advisory
+# naming this file as the winner - that is the intended layering, the same
+# way rt.fragment overrides common.fragment.
+#
+# Not folded into common.fragment because that would also force hwe, which
+# asks for these as =m in its own defconfig, and rt, which does not want a
+# GPU at all.
+
+# Both Intel drivers are built, and which one binds is a per-device runtime
+# choice on the kernel command line rather than a build-time one:
+#
+#   Gen12 (bx39 and friends)   default - i915 claims the device
+#   Alder/Raptor Lake + SR-IOV  xe.force_probe=<id> i915.force_probe=!<id>
+#
+# SR-IOV is the reason xe is here at all: i915 has no SR-IOV support in any
+# version, and xe's ALDERLAKE_S/_P/_N descriptors in 6.18 are the first to
+# set .has_sriov. They also set .require_force_probe, so xe never binds by
+# accident on a device that i915 already serves.
+#
+# =m, not =y, for xe specifically: DRM_XE_DISPLAY depends on DRM_XE=m
+# (drivers/gpu/drm/xe/Kconfig), so a built-in xe has no display engine and
+# would leave the console with no output on any device it claims. i915
+# follows =m for symmetry; both autoload via pkg/udev, which is in the
+# rootfs.
+CONFIG_DRM_I915=m
+CONFIG_DRM_XE=m
+CONFIG_DRM_XE_DISPLAY=y
+
+# virtio-gpu so EVE under QEMU (make run-live) also gets a /dev/dri, which is
+# the whole dev loop for the console.
+CONFIG_DRM_VIRTIO_GPU=m
+
+# Keeps the text consoles alive once i915/xe takes the display over from
+# simpledrm. Without it the handover leaves a blank screen on any failure
+# path that falls back to the TUI.
+CONFIG_DRM_FBDEV_EMULATION=y
